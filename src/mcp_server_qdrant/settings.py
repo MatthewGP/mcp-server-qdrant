@@ -46,6 +46,31 @@ class EmbeddingProviderSettings(BaseSettings):
         default="sentence-transformers/all-MiniLM-L6-v2",
         validation_alias="EMBEDDING_MODEL",
     )
+    api_base_url: str | None = Field(
+        default=None,
+        validation_alias="EMBEDDING_API_BASE_URL",
+        description="Base URL for the embedding API endpoint (for OpenAI-compatible providers)",
+    )
+    api_key: str | None = Field(
+        default=None,
+        validation_alias="EMBEDDING_API_KEY",
+        description="API key for the embedding service (optional for local servers)",
+    )
+    vector_size: int | None = Field(
+        default=None,
+        validation_alias="EMBEDDING_VECTOR_SIZE",
+        description="Manual override for vector dimensions (auto-detected if not specified)",
+    )
+    timeout: int = Field(
+        default=30,
+        validation_alias="EMBEDDING_TIMEOUT",
+        description="Request timeout in seconds",
+    )
+    max_retries: int = Field(
+        default=3,
+        validation_alias="EMBEDDING_MAX_RETRIES",
+        description="Maximum number of retry attempts for failed requests",
+    )
 
 
 class FilterableField(BaseModel):

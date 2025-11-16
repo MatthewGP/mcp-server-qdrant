@@ -44,8 +44,13 @@ The configuration of the server is done using environment variables:
 | `QDRANT_API_KEY`         | API key for the Qdrant server                                       | None                                                              |
 | `COLLECTION_NAME`        | Name of the default collection to use.                              | None                                                              |
 | `QDRANT_LOCAL_PATH`      | Path to the local Qdrant database (alternative to `QDRANT_URL`)     | None                                                              |
-| `EMBEDDING_PROVIDER`     | Embedding provider to use (currently only "fastembed" is supported) | `fastembed`                                                       |
+| `EMBEDDING_PROVIDER`     | Embedding provider to use ("fastembed" or "openai_compatible") | `fastembed`                                                       |
 | `EMBEDDING_MODEL`        | Name of the embedding model to use                                  | `sentence-transformers/all-MiniLM-L6-v2`                          |
+| `EMBEDDING_API_BASE_URL` | Base URL for OpenAI-compatible embedding API                       | None (required for openai_compatible provider)                    |
+| `EMBEDDING_API_KEY`      | API key for embedding service (optional for local servers)         | None                                                              |
+| `EMBEDDING_VECTOR_SIZE`  | Manual override for vector dimensions (auto-detected if not set)   | None                                                              |
+| `EMBEDDING_TIMEOUT`      | Request timeout in seconds                                         | `30`                                                              |
+| `EMBEDDING_MAX_RETRIES`  | Maximum number of retry attempts for failed requests               | `3`                                                               |
 | `TOOL_STORE_DESCRIPTION` | Custom description for the store tool                               | See default in [`settings.py`](src/mcp_server_qdrant/settings.py) |
 | `TOOL_FIND_DESCRIPTION`  | Custom description for the find tool                                | See default in [`settings.py`](src/mcp_server_qdrant/settings.py) |
 
@@ -179,7 +184,94 @@ For local Qdrant mode:
 This MCP server will automatically create a collection with the specified name if it doesn't exist.
 
 By default, the server will use the `sentence-transformers/all-MiniLM-L6-v2` embedding model to encode memories.
-For the time being, only [FastEmbed](https://qdrant.github.io/fastembed/) models are supported.
+The server supports multiple embedding providers:
+
+### Local Embedding Servers
+
+You can use local embedding servers like [LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.com/) for private, on-device embedding generation. This provides better privacy and reduces dependency on external services.
+
+#### LM Studio Configuration
+
+LM Studio provides an OpenAI-compatible API for local embedding models:
+
+```bash
+EMBEDDING_PROVIDER=openai_compatible \
+EMBEDDING_MODEL=text-embedding-your-embedding \
+EMBEDDING_API_BASE_URL=http://192.0.2.10:2345/v1 \
+EMBEDDING_VECTOR_SIZE=384 \
+QDRANT_URL="http://localhost:6333" \
+COLLECTION_NAME="my-collection" \
+uvx mcp-server-qdrant
+```
+
+#### Ollama Configuration
+
+Ollama can be used with its native API format or OpenAI-compatible mode:
+
+```bash
+# Using Ollama's native API
+EMBEDDING_PROVIDER=openai_compatible \
+EMBEDDING_MODEL=nomic-embed-text \
+EMBEDDING_API_BASE_URL=http://localhost:11434/api \
+EMBEDDING_VECTOR_SIZE=768 \
+QDRANT_URL="http://localhost:6333" \
+COLLECTION_NAME="my-collection" \
+uvx mcp-server-qdrant
+
+# Using Ollama with OpenAI-compatible mode
+EMBEDDING_PROVIDER=openai_compatible \
+EMBEDDING_MODEL=nomic-embed-text \
+EMBEDDING_API_BASE_URL=http://localhost:11434/v1 \
+EMBEDDING_API_KEY=ollama \
+EMBEDDING_VECTOR_SIZE=768 \
+QDRANT_URL="http://localhost:6333" \
+COLLECTION_NAME="my-collection" \
+uvx mcp-server-qdrant
+```
+
+#### Vector Dimensions
+
+The server can auto-detect vector dimensions from the first embedding request, but you can also specify them manually:
+
+```bash
+# Manual configuration (recommended for production)
+EMBEDDING_VECTOR_SIZE=384
+
+# Or let the server auto-detect (may cause initial delay)
+# EMBEDDING_VECTOR_SIZE can be omitted
+```
+
+#### Claude Desktop Configuration
+
+For local embedding servers with Claude Desktop:
+
+```json
+{
+  "qdrant-local": {
+    "command": "uvx",
+    "args": ["mcp-server-qdrant"],
+    "env": {
+      "QDRANT_LOCAL_PATH": "/path/to/qdrant/database",
+      "COLLECTION_NAME": "your-collection-name",
+      "EMBEDDING_PROVIDER": "openai_compatible",
+      "EMBEDDING_MODEL": "text-embedding-your-embedding",
+      "EMBEDDING_API_BASE_URL": "http://192.0.2.10:2345/v1",
+      "EMBEDDING_VECTOR_SIZE": "384"
+    }
+  }
+}
+```
+
+### Troubleshooting Local Servers
+
+- **Connection Issues**: Ensure your local server is running and accessible from the network
+- **Model Availability**: Verify the embedding model is downloaded and loaded in your local server
+- **API Format**: Try both OpenAI-compatible (`/v1`) and native API endpoints
+- **Timeouts**: Increase `EMBEDDING_TIMEOUT` for larger models or slower hardware
+
+### FastEmbed (Default)
+
+For smaller use cases or when you prefer the default option, [FastEmbed](https://qdrant.github.io/fastembed/) models are supported and require no additional setup.
 
 ## Support for other tools
 
